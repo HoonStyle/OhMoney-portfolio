@@ -7,6 +7,52 @@
 
 ---
 
+## Screenshots
+
+### Dashboard Overview
+
+시스템 상태, 파이프라인 처리량, 에이전트 헬스체크를 한눈에 확인하는 메인 대시보드.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Pipeline Monitor
+
+파이프라인 실행 상태를 실시간으로 모니터링. 각 단계(수집→스코어링→스크립트→미디어→게시)의 진행 상황과 에러를 추적.
+
+![Pipeline Monitor](docs/screenshots/pipeline_monitor.png)
+
+### Shorts Analytics
+
+YouTube Shorts 핵심 지표(조회수, 시청 지속율, CTR) 분석 보드. 일별 추이와 보조 지표를 함께 제공.
+
+![Shorts Analytics](docs/screenshots/shorts_analytics.png)
+
+### Metrics Board
+
+수익 지표, 전환율, CPA 등 캠페인 성과를 종합적으로 분석하는 지표 통합 보드.
+
+![Metrics Board](docs/screenshots/metrics_board.png)
+
+### Generated Videos
+
+생성된 영상 목록. 각 영상의 상태, 생성일, 조회수를 확인하고 상세 정보에 접근.
+
+![Generated Videos](docs/screenshots/generated_videos.png)
+
+### Scheduler
+
+자동 수집, 분석, 게시 등 반복 작업의 스케줄 관리. 실행 이력과 상태를 실시간 확인.
+
+![Scheduler](docs/screenshots/scheduler.png)
+
+### Idea Bank
+
+토픽 아이디어 관리. 카테고리별 필터링, 상태 추적(candidate → approved → archived), 수동 토픽 추가.
+
+![Idea Bank](docs/screenshots/idea_bank.png)
+
+---
+
 ## Architecture Overview
 
 ```
