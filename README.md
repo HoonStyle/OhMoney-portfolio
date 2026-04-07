@@ -62,62 +62,54 @@ YouTube Shorts 핵심 지표(조회수, 시청 지속율, CTR) 분석 보드. �
 ## Architecture Overview
 
 ```mermaid
-graph TD
-    TG["🤖 Telegram Bot<br/><small>운영 명령 & 알림 수신</small>"]
+flowchart TB
+    TG(Telegram Bot) --> API
 
-    subgraph Backend["FastAPI Backend"]
-        direction TB
-        API["REST API Routers"]
-        SCHED["Scheduler<br/><small>APScheduler</small>"]
-        AUTH["Dashboard Auth"]
-        MON["Monitoring<br/><small>Prometheus</small>"]
-
-        subgraph Orchestration["LangGraph Orchestration (master_graph)"]
-            direction LR
-            N1["Ingest"] --> N2["Candidate<br/>Selection"] --> N3["Topic<br/>Scoring"] --> N4["Script<br/>Generation"] --> N5["Media<br/>Dispatch"] --> N6["Completion"]
-        end
-
-        subgraph Agents["20 Specialized Agents"]
-            direction LR
-            A1["Ingest<br/>Agent"]
-            A2["Topic Scoring<br/>Agent"]
-            A3["Script Agent<br/><small>4-stage pipeline</small>"]
-            A4["Visual<br/>Agent"]
-            A5["SEO<br/>Agent"]
-            A6["+ 15 more"]
-        end
+    subgraph backend [FastAPI Backend]
+        API(REST API) --- SCHED(Scheduler) --- AUTH(Auth) --- MON(Prometheus)
     end
 
-    subgraph Media["Media Pipeline (5 stages)"]
-        direction LR
-        P1["Plan"] --> P2["Asset Gen<br/><small>Google Veo<br/>Gemini TTS</small>"] --> P3["FFmpeg Render<br/><small>1080×1920</small>"] --> P4["Package"] --> P5["Publish<br/><small>YouTube API v3</small>"]
+    API --> ORCH
+
+    subgraph orch [LangGraph Orchestration]
+        ORCH(master_graph) --> |1| INGEST(Ingest)
+        INGEST --> |2| SELECT(Candidate Selection)
+        SELECT --> |3| SCORE(Topic Scoring)
+        SCORE --> |4| SCRIPT(Script Generation)
+        SCRIPT --> |5| DISPATCH(Media Dispatch)
+        DISPATCH --> |6| DONE(Completion)
     end
 
-    subgraph Dashboard["Vue 3 Dashboard"]
-        direction LR
-        D1["Pipeline<br/>Monitor"]
-        D2["Metrics<br/>Board"]
-        D3["Scheduler<br/>UI"]
-        D4["Shorts<br/>Analytics"]
-        D5["Idea<br/>Bank"]
+    SCRIPT --> AGENTS
+    subgraph agents [20 Specialized Agents]
+        AGENTS(Agent Pool) --- SA(Script Agent - 4 stage)
+        AGENTS --- TA(Topic Scoring Agent)
+        AGENTS --- VA(Visual Agent)
+        AGENTS --- SEO(SEO Agent)
+        AGENTS --- MORE(+ 15 more)
     end
 
-    subgraph Infra["Infrastructure"]
-        direction LR
-        PG["PostgreSQL"]
-        RD["Redis + ARQ"]
-        MI["MinIO"]
-        GF["Grafana"]
+    DISPATCH --> MEDIA
+    subgraph media [Media Pipeline - 5 Stages]
+        MEDIA(Plan) --> ASSET(Asset Gen - Veo/TTS)
+        ASSET --> RENDER(FFmpeg Render - 1080x1920)
+        RENDER --> PKG(Package)
+        PKG --> PUB(Publish - YouTube API v3)
     end
 
-    TG --> Backend
-    API --> Orchestration
-    SCHED --> Orchestration
-    Orchestration --> Agents
-    Orchestration --> Media
-    Backend --> Dashboard
-    Backend --> Infra
-    Media --> MI
+    subgraph infra [Infrastructure]
+        PG[(PostgreSQL)] --- RD[(Redis + ARQ)] --- MI[(MinIO)] --- GF[Grafana]
+    end
+
+    backend --> infra
+    ASSET --> MI
+
+    subgraph dashboard [Vue 3 Dashboard]
+        D1(Pipeline Monitor) --- D2(Metrics Board) --- D3(Scheduler)
+        D4(Shorts Analytics) --- D5(Idea Bank) --- D6(Video Maker)
+    end
+
+    API --> dashboard
 ```
 
 ---
