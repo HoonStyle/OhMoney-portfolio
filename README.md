@@ -122,7 +122,7 @@ YouTube Shorts 핵심 지표(조회수, 시청 지속율, CTR) 분석 보드. �
 | **Backend** | Python 3.12 / FastAPI / SQLAlchemy 2.0 / ARQ (async task queue) |
 | **Orchestration** | LangGraph (state machine-based pipeline) |
 | **LLM** | Gemini (default) / GPT-4o-mini (high-quality) / Instructor (structured output) |
-| **Media** | Google Veo (video gen) / Gemini TTS / FFmpeg |
+| **Media** | Nano Banana (image gen) / Google Veo (video gen) / Gemini TTS / FFmpeg |
 | **Frontend** | Vue 3 + TypeScript + Vite + Pinia |
 | **Infra** | Docker Compose / PostgreSQL / Redis / MinIO / Prometheus + Grafana |
 | **Deploy** | Mac mini single-node |
@@ -239,7 +239,7 @@ Plan → Asset → Render → Package → Publish
 | Stage | Input | Output | Technology |
 |-------|-------|--------|-----------|
 | Plan | ScriptPackageOutput | Scene breakdown | LLM-based planning |
-| Asset | Scene prompts | Video/Audio files | Google Veo + Gemini TTS |
+| Asset | Scene prompts | Video/Audio files | Nano Banana + Google Veo + Gemini TTS |
 | Render | Scenes + Audio | Final MP4 (1080×1920) | FFmpeg |
 | Package | Video + Metadata | Upload-ready package | Title/Tags/Comments |
 | Publish | Package | Published video | YouTube Data API v3 |
