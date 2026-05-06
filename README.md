@@ -36,7 +36,7 @@
 
 ▶ **[30대 외로움, 혼자라서가 아니었다? 진짜 이유 4가지](https://youtube.com/shorts/LGiRAPyuo6w?feature=share)**
 
-위 영상은 토픽 선정 → 스크립트 4단계 생성 → Veo 영상 생성 → Gemini TTS → FFmpeg 렌더링 → YouTube 게시까지 파이프라인 전 과정을 거쳐 자동 생성되었습니다.
+위 영상은 토픽 선정 → 스크립트 4단계 생성 → 이미지 or 영상 생성 → Gemini TTS → FFmpeg 렌더링 → YouTube 게시까지 파이프라인 전 과정을 거쳐 자동 생성되었습니다.
 
 ---
 
