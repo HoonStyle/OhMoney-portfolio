@@ -8,6 +8,14 @@ LangGraph 기반 에이전트로 YouTube Shorts의 수집·기획·제작·게�
 
 ![OhMoney dashboard](docs/screenshots/dashboard.png)
 
+## 생성 결과 예시
+
+[![YouTube Shorts 생성 예시](https://img.youtube.com/vi/LGiRAPyuo6w/hqdefault.jpg)](https://youtube.com/shorts/LGiRAPyuo6w)
+
+[30대 외로움, 혼자라서가 아니었다? 진짜 이유 4가지](https://youtube.com/shorts/LGiRAPyuo6w) — 토픽 선정부터 스크립트·미디어 생성·렌더링·게시까지 연결한 결과 예시입니다. 운영 과정에는 토픽 후보 검수와 게시 전 확인 등 사람의 검토 지점이 포함됩니다.
+
+타깃, 수익화 가설, 검증 지표와 제품 선택은 [제품 설계 노트](docs/product-notes.md)에 정리했습니다. 가설과 실제 달성 성과는 구분합니다.
+
 ## 주요 기능
 
 - **에이전트 오케스트레이션:** LangGraph 상태와 조건부 분기로 토픽 선정, 스크립트 생성, 미디어 작업을 연결합니다.
@@ -65,7 +73,7 @@ API는 작업을 등록하고, ARQ 워커가 LLM·미디어 처리를 수행합�
 | 백엔드 | Python 3.12, FastAPI, SQLAlchemy 2.0, ARQ |
 | 오케스트레이션 | LangGraph |
 | LLM | Gemini, GPT-4o-mini, Instructor |
-| 미디어 | Google Veo, Gemini TTS, FFmpeg |
+| 미디어 | Nano Banana, Google Veo, Gemini TTS, FFmpeg |
 | 프론트엔드 | Vue 3, TypeScript, Vite, Pinia |
 | 데이터·운영 | PostgreSQL, Redis, MinIO, Docker Compose |
 | 모니터링 | Prometheus, Grafana, Telegram |
