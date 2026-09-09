@@ -1,328 +1,100 @@
-# OhMoney — LLM Agent-Based YouTube Shorts Automation System
+# OhMoney
 
-> 금융/보험/투자 도메인 특화 YouTube Shorts 완전자동화 시스템.
-> 수집 → 토픽 선정 → 스크립트 생성 → 미디어 렌더링 → 게시 → 분석 → 피드백 루프를 1인 운영으로 자동화합니다.
+LangGraph 기반 에이전트로 YouTube Shorts의 수집·기획·제작·게시·분석 흐름을 연결하는 개인 개발 프로젝트입니다.
 
-**Note:** 이 레포는 포트폴리오 공개용입니다. 프롬프트, 비즈니스 로직, 스코어링 알고리즘 등 핵심 지적 재산은 제외되어 있습니다.
+> **공개 범위:** 이 저장소는 아키텍처, 화면, 선별된 코드 구조를 소개하는 포트폴리오입니다. 프롬프트·스코어링·일부 연동 구현과 실행에 필요한 설정은 제외되어 있으며, 이 저장소만으로 전체 서비스를 실행할 수는 없습니다.
 
----
+[주요 기능](#주요-기능) · [처리 흐름](#처리-흐름) · [기술 스택](#기술-스택) · [구현 참고 문서](docs/implementation-reference.md) · [공개 범위와 제약](#공개-범위와-제약)
 
-## Screenshots
+![OhMoney dashboard](docs/screenshots/dashboard.png)
 
-### Dashboard Overview
+## 주요 기능
 
-시스템 상태, 파이프라인 처리량, 에이전트 헬스체크를 한눈에 확인하는 메인 대시보드.
+- **에이전트 오케스트레이션:** LangGraph 상태와 조건부 분기로 토픽 선정, 스크립트 생성, 미디어 작업을 연결합니다.
+- **단계별 콘텐츠 생성:** Writer → Director → Scene Planner → Finalizer로 초안·리뷰·씬 구성·메타데이터 생성을 분리합니다.
+- **모델 배정:** 토픽 등급에 따라 LLM 프로바이더를 다르게 사용합니다.
+- **미디어 파이프라인:** Plan → Asset → Render → Package → Publish를 단계별로 처리하고 실패 시 재시도·대체 처리를 적용합니다.
+- **운영 도구:** 작업 큐, 스케줄러, 대시보드, Telegram 알림으로 실행 상태와 실패 작업을 추적합니다.
+- **분석·피드백:** 게시 후 지표를 수집하고 다음 토픽 선정과 자원 배정에 활용합니다.
 
-![Dashboard](docs/screenshots/dashboard.png)
+## 처리 흐름
 
-### Pipeline Monitor
-
-파이프라인 실행 상태를 실시간으로 모니터링. 각 단계(수집→스코어링→스크립트→미디어→게시)의 진행 상황과 에러를 추적.
-
-![Pipeline Monitor](docs/screenshots/pipeline_monitor.png)
-
-### Shorts Analytics
-
-YouTube Shorts 핵심 지표(조회수, 시청 지속율, CTR) 분석 보드. 일별 추이와 보조 지표를 함께 제공.
-
-![Shorts Analytics](docs/screenshots/shorts_analytics.png)
-
-### Metrics Board
-
-수익 지표, 전환율, CPA 등 캠페인 성과를 종합적으로 분석하는 지표 통합 보드.
-
-![Metrics Board](docs/screenshots/metrics_board.png)
-
-### Generated Videos
-
-생성된 영상 목록. 각 영상의 상태, 생성일, 조회수를 확인하고 상세 정보에 접근.
-
-![Generated Videos](docs/screenshots/generated_videos.png)
-
-### Scheduler
-
-자동 수집, 분석, 게시 등 반복 작업의 스케줄 관리. 실행 이력과 상태를 실시간 확인.
-
-![Scheduler](docs/screenshots/scheduler.png)
-
-### Idea Bank
-
-토픽 아이디어 관리. 카테고리별 필터링, 상태 추적(candidate → approved → archived), 수동 토픽 추가.
-
-![Idea Bank](docs/screenshots/idea_bank.png)
-
-### Product Landing Page
-
-영상에서 소개한 상품을 비교/확인할 수 있는 외부 공개 랜딩 페이지. 영상 → 상품 전환 퍼널의 핵심 접점.
-
-![Landing Page](docs/screenshots/landing_page.png)
-
----
-
-## Architecture Overview
-
-![Architecture Overview](docs/architecture.png)
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Backend** | Python 3.12 / FastAPI / SQLAlchemy 2.0 / ARQ (async task queue) |
-| **Orchestration** | LangGraph (state machine-based pipeline) |
-| **LLM** | Gemini (default) / GPT-4o-mini (high-quality) / Instructor (structured output) |
-| **Media** | Google Veo (video gen) / Gemini TTS / FFmpeg |
-| **Frontend** | Vue 3 + TypeScript + Vite + Pinia |
-| **Infra** | Docker Compose / PostgreSQL / Redis / MinIO / Prometheus + Grafana |
-| **Deploy** | Mac mini single-node |
-
----
-
-## Key Design Decisions
-
-### 1. LangGraph State Machine for Orchestration
-
-일반적인 DAG 기반 워크플로우 대신 LangGraph의 `StateGraph`를 선택한 이유:
-
-- **조건부 분기**: 토픽 등급(S/A/B/C)에 따라 LLM 프로바이더를 동적 라우팅
-- **상태 추적**: `PipelineMasterState`로 전체 파이프라인 상태를 단일 TypedDict로 관리
-- **취소 지원**: 각 노드 진입 시 취소 요청 확인 → 즉시 중단
-- **재시도 격리**: 노드 단위 재시도로 전체 파이프라인 재실행 방지
-
-```python
-class PipelineMasterState(TypedDict, total=False):
-    job_id: str
-    candidates: list[CandidateItem]
-    scored_topics: list[dict[str, Any]]
-    scripts: list[ScriptPackageOutput]
-    enqueued_media_jobs: list[str]
-    # ... 15+ state fields
+```text
+수집 → 토픽 선정 → 스크립트 생성 → 미디어 작업 큐
+                                     │
+                                     ▼
+                    Plan → Asset → Render → Package → Publish
+                                     │
+                                     ▼
+                              분석 → 다음 주기 피드백
 ```
 
-### 2. 4-Stage Script Agent Pipeline
+### 스크립트 생성
 
-단일 LLM 호출 대신 4단계 파이프라인으로 분리:
+| 단계 | 역할 |
+| --- | --- |
+| Writer | 훅과 본문 초안 생성 |
+| Director | 초안 리뷰와 개선 지시 |
+| Scene Planner | 비주얼 씬 구성 |
+| Finalizer | SEO·마케팅 메타데이터를 포함한 패키지 조합 |
 
-```
-Writer → Director → Scene Planner → Finalizer
-```
+### 미디어 처리
 
-- **Writer**: 훅 + 본문 초안 생성
-- **Director**: 품질 리뷰 & 개선 지시
-- **Scene Planner**: 비주얼 씬 분해
-- **Finalizer**: SEO/마케팅 데이터 포함 최종 패키지 조합
+| 단계 | 입력 → 출력 |
+| --- | --- |
+| Plan | 스크립트 → 씬 계획 |
+| Asset | 씬 프롬프트 → 영상·음성 소스 |
+| Render | 씬·음성 → 세로형 MP4 |
+| Package | 영상·메타데이터 → 업로드 패키지 |
+| Publish | 패키지 → YouTube 게시 |
 
-각 단계는 독립적으로 fallback 가능 → 부분 실패 시 전체 재생성 불필요.
+단계별 재시도는 실패한 작업을 복구하기 위한 구조입니다. 외부 API 성공이나 모든 산출물의 품질을 보장하는 의미는 아닙니다.
 
-### 3. Grade-Based LLM Cost Management
+## 아키텍처
 
-토픽 등급에 따라 LLM 프로바이더를 차등 배정:
+![Architecture overview](docs/architecture.png)
 
-| Grade | Provider | Rationale |
-|-------|----------|-----------|
-| S/A | GPT-4o-mini | 높은 기대수익 → 품질 투자 정당화 |
-| B/C | Gemini Free Tier | 낮은 기대수익 → 비용 최소화 |
+API는 작업을 등록하고, ARQ 워커가 LLM·미디어 처리를 수행합니다. PostgreSQL은 서비스 데이터를, Redis는 작업 큐를, MinIO는 미디어 저장소를 담당합니다. 로컬 디스크와 MinIO를 함께 사용하는 캐시로 재사용 가능한 미디어의 중복 생성을 줄입니다.
 
-### 4. 2-Layer Media Cache
+상태 계약, 에이전트 목록, 단계별 오류 처리, 배포 구성 예시는 [구현 참고 문서](docs/implementation-reference.md)에 있습니다. 목록에는 에이전트와 미디어 워커가 함께 포함되므로 행 개수를 그대로 독립 LLM 에이전트 수로 해석하지 않습니다.
 
-API 호출 비용과 속도를 최적화하기 위한 이중 캐시:
+## 기술 스택
 
-```
-Request → L1 (Local Disk) → L2 (MinIO) → API Call
-              ↑ write-back       ↑ write-through
-```
+| 영역 | 구성 |
+| --- | --- |
+| 백엔드 | Python 3.12, FastAPI, SQLAlchemy 2.0, ARQ |
+| 오케스트레이션 | LangGraph |
+| LLM | Gemini, GPT-4o-mini, Instructor |
+| 미디어 | Google Veo, Gemini TTS, FFmpeg |
+| 프론트엔드 | Vue 3, TypeScript, Vite, Pinia |
+| 데이터·운영 | PostgreSQL, Redis, MinIO, Docker Compose |
+| 모니터링 | Prometheus, Grafana, Telegram |
 
-- 동일 씬 재생성 시 API 호출 0회
-- MinIO에 영구 보관 → 로컬 캐시 유실 시에도 복구 가능
+모델·프로바이더 이름은 문서에 기록된 구성입니다. 현재 제공 여부·무료 할당량·요금은 각 제공자의 정책을 확인해야 합니다.
 
-### 5. Async-First with ARQ
+## 저장소 둘러보기
 
-모든 I/O를 비동기로 처리하되, 파이프라인 실행은 ARQ(Redis 기반 task queue)로 분리:
+| 경로 | 내용 |
+| --- | --- |
+| [app/](app/) | 백엔드·에이전트·파이프라인의 공개 코드 구조 |
+| [frontend/](frontend/) | 운영 화면 관련 공개 코드 |
+| [monitoring/](monitoring/) | 모니터링 구성 |
+| [docker-compose.yml](docker-compose.yml) | 서비스 구성 참고 |
+| [docs/implementation-reference.md](docs/implementation-reference.md) | 설계 판단, 데이터 계약, 구현 예시, 전체 화면 모음 |
 
-- API 서버는 작업 등록만 담당 → 즉시 응답
-- 무거운 LLM/미디어 작업은 별도 워커에서 실행
-- Single-flight lock으로 동일 작업 중복 실행 방지
+## 공개 범위와 제약
 
----
+다음은 공개하지 않습니다.
 
-## Agent Architecture
+- LLM 프롬프트 전문과 도메인별 비즈니스 로직
+- EV 계산·토픽 스코어링 알고리즘
+- 제휴 서비스 연동 코드와 실제 수집기 구현
+- API 키와 운영 환경 설정
 
-20개의 특화 에이전트가 각각 단일 책임을 가지며, `master_graph`를 통해 조율됩니다.
+따라서 전체 서비스용 설치·실행 명령은 제공하지 않습니다. 화면의 지표와 모델 배정 정책은 기능·설계 설명이며, 공개 검증된 수익이나 비용 절감 성과를 뜻하지 않습니다.
 
-```python
-# Base Agent Pattern
-class BaseAgent(ABC, Generic[TIn, TOut]):
-    """모든 에이전트의 추상 베이스 클래스"""
+## 문의
 
-    @abstractmethod
-    async def run_async(self, payload: TIn) -> TOut:
-        ...
+구조나 공개 예시에 관한 질문은 [GitHub Issues](https://github.com/HoonStyle/OhMoney-portfolio/issues)로 남겨 주세요. 민감한 운영 정보나 인증정보는 올리지 마세요.
 
-    async def run_via_langgraph_async(self, payload: TIn) -> TOut:
-        """LangGraph StateGraph를 통한 실행 (추적/모니터링 통합)"""
-        graph = self._get_invoke_graph()
-        final_state = await graph.ainvoke({"payload": payload})
-        return final_state["result"]
-```
-
-### Agent List
-
-| Category | Agents |
-|----------|--------|
-| **Content Pipeline** | IngestAgent, TopicScoringAgent, ScriptAgent, VisualAgent, SeoAgent |
-| **Media Pipeline** | PlanWorker, AssetWorker, RenderWorker, PackagerWorker, PublisherWorker |
-| **Analytics** | MetricsCollectorAgent, EVEngineAgent, ExperimentJudgeAgent, WeeklyReportAgent |
-| **Monetization** | ProductAgent, OfferRouterAgent, FunnelRouterAgent, LeadScoringAgent |
-| **Operations** | ContentSyncAgent, LinkCheckAgent, FaqReplyAgent, NextTopicAgent |
-
----
-
-## Media Pipeline
-
-5단계 순차 처리 파이프라인. 각 단계는 독립적으로 재시도 가능합니다.
-
-```
-Plan → Asset → Render → Package → Publish
-```
-
-| Stage | Input | Output | Technology |
-|-------|-------|--------|-----------|
-| Plan | ScriptPackageOutput | Scene breakdown | LLM-based planning |
-| Asset | Scene prompts | Video/Audio files | Google Veo + Gemini TTS |
-| Render | Scenes + Audio | Final MP4 (1080×1920) | FFmpeg |
-| Package | Video + Metadata | Upload-ready package | Title/Tags/Comments |
-| Publish | Package | Published video | YouTube Data API v3 |
-
-### Error Handling Strategy
-
-| Stage | On Failure |
-|-------|-----------|
-| Plan | Abort pipeline, Telegram alert |
-| Asset | 3 retries (exponential backoff) → static image fallback |
-| Render | Skip failed scene, merge remaining |
-| Package | Use default title/tags |
-| Publish | Re-enqueue for next cycle |
-
----
-
-## Data Flow
-
-```python
-# Core data contracts (Pydantic models)
-
-class ScriptPackageOutput(BaseModel):
-    """Script Agent → Media Pipeline 핸드오프 스키마"""
-    idea_id: int
-    hook: str
-    body: list[str]
-    cta: str
-    template_type: str          # A/B/C/D
-    visuals: list[VisualPrompt]
-    video_scene_prompts: list[VideoScenePrompt]
-    seo_data: SeoPackage
-    marketing_data: MarketingData
-
-class ScriptReadyPayload(BaseModel):
-    """Media Pipeline 입력 스키마"""
-    narration_text: str
-    scenes: list[Scene]
-    tone_profile: ToneProfile
-```
-
----
-
-## Infrastructure
-
-```yaml
-# Docker Compose Services
-services:
-  api_app:        # FastAPI backend (port 9100)
-  scheduler:      # APScheduler daemon
-  postgres:       # PostgreSQL database
-  redis:          # ARQ queue backend
-  minio:          # S3-compatible object storage
-  prometheus:     # Metrics collection
-  grafana:        # Metrics dashboard
-```
-
-```dockerfile
-# Dockerfile highlights
-FROM python:3.12-slim
-RUN apt-get install -y ffmpeg fonts-noto-cjk fonts-nanum  # CJK font support
-# Alembic migrations on startup
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
----
-
-## Project Structure
-
-```
-.
-├── app/
-│   ├── main.py                    # FastAPI application
-│   ├── config.py                  # Environment-based settings
-│   ├── db.py                      # SQLAlchemy session
-│   ├── db_models.py               # ORM models (20+ tables)
-│   ├── agents/
-│   │   ├── base.py                # BaseAgent[TIn, TOut] ABC
-│   │   ├── script_agent.py        # 4-stage script pipeline
-│   │   ├── ingest_agent.py        # Topic ingestion
-│   │   ├── topic_scoring_agent.py # Grade assignment (S/A/B/C)
-│   │   ├── visual_agent.py        # Visual prompt generation
-│   │   ├── seo_agent.py           # SEO optimization
-│   │   └── ...                    # 15+ more agents
-│   ├── orchestration/
-│   │   ├── master_graph.py        # LangGraph state machine
-│   │   ├── arq_tasks.py           # Background job orchestration
-│   │   └── guards.py              # Auth & validation
-│   ├── media_pipeline/
-│   │   ├── pipeline.py            # 5-stage media orchestration
-│   │   ├── models.py              # Pipeline data models
-│   │   ├── workers/               # Plan/Asset/Render/Package/Publish
-│   │   └── services/              # Cache, state, metrics, DLQ
-│   ├── routers/                   # REST API endpoints
-│   ├── schemas/                   # Pydantic I/O contracts
-│   ├── services/                  # Business logic layer
-│   └── collectors/                # Data source integrations
-├── frontend/
-│   ├── src/
-│   │   ├── views/                 # 12 page components
-│   │   ├── components/            # Reusable UI components
-│   │   ├── composables/           # Vue 3 composition hooks
-│   │   └── router/                # Client-side routing
-│   └── vite.config.ts
-├── alembic/                       # Database migrations
-├── monitoring/                    # Prometheus + Grafana config
-├── docker-compose.yml             # 7 services
-├── Dockerfile
-└── requirements.txt
-```
-
----
-
-## Metrics & Monitoring
-
-- **Prometheus**: 파이프라인 단계별 소요시간, LLM 호출 횟수, 에러율
-- **Grafana**: 실시간 대시보드 (API latency, pipeline throughput)
-- **Telegram**: 작업 완료/실패 알림, 운영 명령 인터페이스
-- **Custom Metrics**: 토픽별 EV 추적, A/B 실험 결과
-
----
-
-## What's Not Included
-
-이 레포는 포트폴리오 공개용으로 다음 항목은 의도적으로 제외했습니다:
-
-- LLM 프롬프트 전문 (도메인 노하우)
-- EV 계산 및 토픽 스코어링 알고리즘
-- 제휴 연동 코드 (쿠팡 파트너스 등)
-- API 키 및 환경 설정
-- 실제 수집기 구현 (뉴스/YouTube/Reddit)
-
----
-
-## Contact
-
-- GitHub: [@HoonStyle](https://github.com/HoonStyle)
+Maintainer: [HoonStyle](https://github.com/HoonStyle)
